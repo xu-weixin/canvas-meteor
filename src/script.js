@@ -135,9 +135,9 @@ $('form').submit(e => {
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
 	const c = canvas.getContext('2d');
-	let skyStars = []; // 星空星星数组
-	let stars = []; // 坠落星星数组
-	let explosions = []; // 爆炸粒子数组
+	let skyStarsArray = []; // 星空星星数组
+	let starsArray = []; // 坠落星星数组
+	let explosionsArray = []; // 爆炸粒子数组
 	const skyStarsCount = 400; // 星空初始生成星星数量
 	let skyStarsVelocity = 0.1; // 星空平移速度
 	let backgroundGradient;
@@ -147,10 +147,10 @@ $('form').submit(e => {
 		function() {
 			canvas.width = window.innerWidth;
 			canvas.height = window.innerHeight;
-			skyStars = [];
-			stars = [];
-			explosions = [];
-			spawnTimer = ~~(Math.random() * 500) + 200;
+			skyStarsArray = [];
+			starsArray = [];
+			explosionsArray = [];
+			spawnTimer = ~~(Math.random() * 500);
 			init();
 		},
 		false
@@ -215,10 +215,16 @@ $('form').submit(e => {
 		this.draw();
 		// 星空一直连续不断向右移
 		this.x += skyStarsVelocity;
+		// y方向上有一个从上到下的偏移量，模拟地球自转时看到的星空
+		let angle =
+			Math.PI /
+			(canvas.width / skyStarsVelocity) *
+			(this.x / skyStarsVelocity);
+		this.y += this.x > 0 ? -Math.cos(angle) * 0.03 : 0;
 	};
 	function drawSkyStars() {
 		for (var i = 0; i < skyStarsCount; i++) {
-			skyStars.push(new Skystar());
+			skyStarsArray.push(new Skystar());
 		}
 	}
 	// 画坠落的星星
@@ -294,7 +300,7 @@ $('form').submit(e => {
 			this.velocity.rotate *= (Math.random() - 0.5) * 20;
 			// 如果没到最小半径，则产生爆炸效果
 			if (this.radius > 1) {
-				explosions.push(new Explosion(this));
+				explosionsArray.push(new Explosion(this));
 			}
 
 			this.radius -= 3;
@@ -314,7 +320,7 @@ $('form').submit(e => {
 
 	function drawStars() {
 		for (let i = 0; i < 1; i++) {
-			stars.push(new Star());
+			starsArray.push(new Star());
 		}
 	}
 
@@ -394,17 +400,20 @@ $('form').submit(e => {
 		c.fillStyle = backgroundGradient;
 		c.fillRect(0, 0, canvas.width, canvas.height);
 		// 画星星
+		// 随机将一个生成的背景星星定义成流星
 		if (spawnTimer % 103 === 0) {
-			skyStars[~~(Math.random() * skyStars.length)].falling = true;
+			skyStarsArray[
+				~~(Math.random() * skyStarsArray.length)
+			].falling = true;
 		}
-		skyStars.forEach(function(skyStar, index) {
+		skyStarsArray.forEach(function(skyStar, index) {
 			// 如果超出canvas或者作为流星滑落结束，则去除这颗星星，在canvas左侧重新生成一颗
 			if (
 				skyStar.x - skyStar.radius - 20 > canvas.width ||
 				skyStar.timeToLive < 0
 			) {
-				skyStars.splice(index, 1);
-				skyStars.push(new Skystar(-Math.random() * canvas.width));
+				skyStarsArray.splice(index, 1);
+				skyStarsArray.push(new Skystar(-Math.random() * canvas.width));
 				return;
 			}
 			// 星空随机产生流星
@@ -431,9 +440,9 @@ $('form').submit(e => {
 		c.fillStyle = '#182028';
 		c.fillRect(0, canvas.height * 0.85, canvas.width, canvas.height * 0.15);
 		// 画坠落的球
-		stars.forEach(function(star, index) {
+		starsArray.forEach(function(star, index) {
 			if (star.die) {
-				stars.splice(index, 1);
+				starsArray.splice(index, 1);
 				return;
 			}
 			if (star.radius <= 0) {
@@ -446,9 +455,9 @@ $('form').submit(e => {
 			star.update();
 		});
 		// 判断爆炸是否结束
-		explosions.forEach(function(explosion, index) {
+		explosionsArray.forEach(function(explosion, index) {
 			if (explosion.particles.length === 0) {
-				explosions.splice(index, 1);
+				explosionsArray.splice(index, 1);
 				return;
 			}
 			explosion.update();
@@ -457,7 +466,7 @@ $('form').submit(e => {
 		spawnTimer--;
 		if (spawnTimer < 0) {
 			spawnTimer = ~~(Math.random() * 500);
-			stars.push(new Star());
+			starsArray.push(new Star());
 		}
 	}
 
