@@ -135,45 +135,42 @@ $('form').submit(e => {
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
 	const c = canvas.getContext('2d');
-	let skyStarsArray = []; // 星空星星数组
-	let starsArray = []; // 坠落星星数组
-	let explosionsArray = []; // 爆炸粒子数组
+	const skyStarsArray = []; // 星空星星数组
+	const starsArray = []; // 坠落星星数组
+	const explosionsArray = []; // 爆炸粒子数组
 	const skyStarsCount = 400; // 星空初始生成星星数量
-	let skyStarsVelocity = 0.1; // 星空平移速度
-	let backgroundGradient;
-	let spawnTimer = ~~(Math.random() * 500); // 随机生成坠落星星的时间
-	addEventListener(
+	const skyStarsVelocity = 0.1; // 星空平移速度
+	const backgroundGradient = c.createLinearGradient(0, 0, 0, canvas.height); //4个参数:startX,startY,EndX,EndY
+	backgroundGradient.addColorStop(0, 'rgba(23, 30, 38, 0.7)');
+	backgroundGradient.addColorStop(1, 'rgba(63, 88, 107, 0.7)');
+	let spawnTimer = Math.random() * 300; // 随机生成坠落星星的时间
+
+	window.addEventListener(
 		'resize',
 		function() {
 			canvas.width = window.innerWidth;
 			canvas.height = window.innerHeight;
-			skyStarsArray = [];
-			starsArray = [];
-			explosionsArray = [];
-			spawnTimer = ~~(Math.random() * 500);
+			skyStarsArray.length = 0;
+			starsArray.length = 0;
+			explosionsArray.length = 0;
+			spawnTimer = Math.random() * 300;
 			init();
 		},
 		false
 	);
 
 	function init() {
-		// 1.画背景(山和星星)
-		///////////////
-		// 1.1 背景色渐变 //
-		///////////////
-		backgroundGradient = c.createLinearGradient(0, 0, 0, canvas.height); //4个参数:startX,startY,EndX,EndY
-		backgroundGradient.addColorStop(0, 'rgba(23, 30, 38, 0.7)');
-		backgroundGradient.addColorStop(1, 'rgba(63, 88, 107, 0.7)');
-		drawSkyStars();
-		drawStars();
+		drawSkyStars(); // 初始化背景星星
+		drawStars(); // 初始化坠落的星星
 	}
 
 	// 画山
 	function drawMountains(number, y, height, color, offset) {
+		c.save();
 		c.fillStyle = color;
 		const width = canvas.width / number;
 		// 循环绘制
-		for (var i = 0; i < number; i++) {
+		for (let i = 0; i < number; i++) {
 			c.beginPath();
 			c.moveTo(width * i - offset, y);
 			c.lineTo(width * i + width + offset, y);
@@ -181,23 +178,23 @@ $('form').submit(e => {
 			c.closePath();
 			c.fill();
 		}
+		c.restore();
 	}
 
-	// 画星空
-	function Skystar(x, y) {
+	function Skystar(x) {
 		this.x = x || (Math.random() - 0.5) * 2 * canvas.width;
-		this.y = y || Math.random() * canvas.height;
+		this.y = Math.random() * canvas.height;
 		this.color = '#ccc';
 		this.shadowColor = '#E3EAEF';
 		this.radius = Math.random() * 3;
 		// 流星属性
 		this.falling = false;
 		this.dx = Math.random() * 4 + 4;
-		// this.dx = 4;
 		this.dy = 2;
 		this.gravity = 0.1;
 		this.timeToLive = 200;
 	}
+
 	Skystar.prototype.draw = function() {
 		c.save();
 		c.beginPath();
@@ -211,36 +208,38 @@ $('form').submit(e => {
 		c.closePath();
 		c.restore();
 	};
+
 	Skystar.prototype.update = function() {
 		this.draw();
 		// 星空一直连续不断向右移
 		this.x += skyStarsVelocity;
-		// y方向上有一个从上到下的偏移量，模拟地球自转时看到的星空
+		// y方向上有一个从上到下的偏移量，这里用cos函数来表示，模拟地球自转时看到的星空
 		let angle =
 			Math.PI /
 			(canvas.width / skyStarsVelocity) *
 			(this.x / skyStarsVelocity);
 		this.y += this.x > 0 ? -Math.cos(angle) * 0.03 : 0;
 	};
+
 	function drawSkyStars() {
-		for (var i = 0; i < skyStarsCount; i++) {
+		for (let i = 0; i < skyStarsCount; i++) {
 			skyStarsArray.push(new Skystar());
 		}
 	}
-	// 画坠落的星星
+
 	function Star() {
 		this.radius = Math.random() * 10 + 5;
 		this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;
 		this.y = -Math.random() * canvas.height;
 		this.velocity = {
-			x: (Math.random() - 0.5) * 20,
+			x: (Math.random() - 0.5) * 20 + 5,
 			y: 5,
 			rotate: 5
 		};
-		this.rotate = Math.random() * Math.PI * 2;
+		this.rotate = Math.sign(this.velocity.x) * Math.random() * Math.PI * 2;
 		this.friction = 0.7;
 		this.gravity = 0.5;
-		this.color = '#fff';
+		this.opacity = 1;
 		this.shadowColor = '#E3EAEF';
 		this.shadowBlur = 20;
 		this.timeToLive = 200;
@@ -251,8 +250,7 @@ $('form').submit(e => {
 		c.save();
 		c.beginPath();
 		// 画五角星
-		// c.star(this.x, this.y, this.radius, this.radius * 0.5, 0);
-		for (var i = 0; i < 5; i++) {
+		for (let i = 0; i < 5; i++) {
 			c.lineTo(
 				Math.cos((18 + i * 72 - this.rotate) / 180 * Math.PI) *
 					this.radius +
@@ -272,12 +270,11 @@ $('form').submit(e => {
 					this.y
 			);
 		}
-		// c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
 		c.shadowColor = this.shadowColor;
 		c.shadowBlur = this.shadowBlur;
 		c.shadowOffsetX = 0;
 		c.shadowOffsetY = 0;
-		c.fillStyle = this.color;
+		c.fillStyle = 'rgba(255,255,255,' + this.opacity + ')';
 		c.fill();
 		c.closePath();
 		c.restore();
@@ -285,60 +282,69 @@ $('form').submit(e => {
 
 	Star.prototype.update = function() {
 		this.draw();
-
 		// 碰到两边墙壁
 		if (
 			this.x + this.radius + this.velocity.x > canvas.width ||
 			this.x - this.radius + this.velocity.x < 0
 		) {
-			this.velocity.x *= -this.friction;
-			this.velocity.rotate *= -this.friction;
+			this.velocity.x *= -this.friction; // 碰到两边墙壁，横向速度损失，同时方向反转
+			this.velocity.rotate *= -this.friction; // 旋转速度也损失，同时方向反转
 		}
 		// 碰到地面
 		if (this.y + this.radius + this.velocity.y > canvas.height) {
-			this.velocity.y *= -this.friction;
-			this.velocity.rotate *= (Math.random() - 0.5) * 20;
 			// 如果没到最小半径，则产生爆炸效果
 			if (this.radius > 1) {
 				explosionsArray.push(new Explosion(this));
 			}
-
+			this.velocity.y *= -this.friction; // 每次碰撞，速度都损失，同时方向反转
+			this.velocity.rotate *= (Math.random() - 0.5) * 20; // 每次碰到地面旋转速度都随机
 			this.radius -= 3;
-			// 修正半径为0~1之间，直接定为1
-			if (this.radius > 0 && this.radius < 1) {
+			// 修正如果半径小等于1，直接定为1
+			if (this.radius <= 1) {
 				this.radius = 1;
 			}
 		} else {
-			this.velocity.y += this.gravity;
+			this.velocity.y += this.gravity; // 没碰到地面，速度增加
 		}
 
 		this.x += this.velocity.x;
 		this.y += this.velocity.y;
-
 		this.rotate += this.velocity.rotate;
+
+		// 进入消失倒计时
+		if (this.radius - 1 <= 0 && !this.die) {
+			this.timeToLive--;
+			this.opacity -= 1 / Math.max(1, this.timeToLive); // 不透明从慢到快
+			if (this.timeToLive < 0) {
+				this.die = true;
+			}
+		}
 	};
 
+	// 画2个星星
 	function drawStars() {
-		for (let i = 0; i < 1; i++) {
+		for (let i = 0; i < 2; i++) {
 			starsArray.push(new Star());
 		}
 	}
 
-	// 爆炸粒子
 	function Explosion(star) {
-		this.particles = [];
+		this.particles = []; // 用来存放爆炸粒子
 		this.init(star);
 	}
+
 	Explosion.prototype.init = function(star) {
-		for (let i = 0; i < 8; i++) {
-			const dx = (Math.random() - 0.5) * 8;
-			const dy = (Math.random() - 0.5) * 20;
-			this.particles.push(new Particle(star.x, star.y, dx, dy));
+		for (let i = 0; i < 4 + Math.random() * 10; i++) {
+			const dx = (Math.random() - 0.5) * 8; // 随机生成的x方向速度
+			const dy = (Math.random() - 0.5) * 20; // 随机生成的y方向速度
+			this.particles.push(new Particle(star.x, star.y, dx, dy)); // 把坐标和速度传给Particle构造函数
 		}
 	};
+
 	Explosion.prototype.update = function() {
-		this.particles.forEach(function(particle, index, particles) {
+		this.particles.forEach((particle, index, particles) => {
 			if (particle.timeToLive <= 0) {
+				// 生命周期结束
 				particles.splice(index, 1);
 				return;
 			}
@@ -346,7 +352,6 @@ $('form').submit(e => {
 		});
 	};
 
-	// 粒子
 	function Particle(x, y, dx, dy) {
 		this.x = x;
 		this.y = y;
@@ -362,6 +367,7 @@ $('form').submit(e => {
 		this.timeToLive = 200;
 		this.shadowColor = '#E3EAEF';
 	}
+
 	Particle.prototype.draw = function() {
 		c.save();
 		c.fillStyle = 'rgba(227, 234, 239,' + this.opacity + ')';
@@ -372,6 +378,7 @@ $('form').submit(e => {
 		c.fillRect(this.x, this.y, this.size.width, this.size.height);
 		c.restore();
 	};
+
 	Particle.prototype.update = function() {
 		this.draw();
 		// 碰到两边墙壁
@@ -399,14 +406,15 @@ $('form').submit(e => {
 		// 画背景
 		c.fillStyle = backgroundGradient;
 		c.fillRect(0, 0, canvas.width, canvas.height);
-		// 画星星
-		// 随机将一个生成的背景星星定义成流星
-		if (spawnTimer % 103 === 0) {
+		// 画背景星星
+		// 随机将一个背景星星定义成流星
+		if (~~spawnTimer % 103 === 0) {
+			// 这里选择一个质数来求余，使得一个生成周期内最多触发一次
 			skyStarsArray[
 				~~(Math.random() * skyStarsArray.length)
 			].falling = true;
 		}
-		skyStarsArray.forEach(function(skyStar, index) {
+		skyStarsArray.forEach((skyStar, index) => {
 			// 如果超出canvas或者作为流星滑落结束，则去除这颗星星，在canvas左侧重新生成一颗
 			if (
 				skyStar.x - skyStar.radius - 20 > canvas.width ||
@@ -422,7 +430,7 @@ $('form').submit(e => {
 				skyStar.y += skyStar.dy;
 				// skyStar.dy += skyStar.gravity;
 				skyStar.color = '#fff';
-
+				// 半径慢慢变小
 				if (skyStar.radius > 0.05) {
 					skyStar.radius -= 0.05;
 				} else {
@@ -439,33 +447,26 @@ $('form').submit(e => {
 		// 画地面
 		c.fillStyle = '#182028';
 		c.fillRect(0, canvas.height * 0.85, canvas.width, canvas.height * 0.15);
-		// 画坠落的球
-		starsArray.forEach(function(star, index) {
+		// 画坠落的星星
+		starsArray.forEach((star, index) => {
 			if (star.die) {
 				starsArray.splice(index, 1);
 				return;
 			}
-			if (star.radius <= 0) {
-				star.radius = 1;
-				star.timeToLive--;
-				if (star.timeToLive < 0) {
-					star.die = true;
-				}
-			}
 			star.update();
 		});
-		// 判断爆炸是否结束
-		explosionsArray.forEach(function(explosion, index) {
+		// 循环更新爆炸点
+		explosionsArray.forEach((explosion, index) => {
 			if (explosion.particles.length === 0) {
 				explosionsArray.splice(index, 1);
 				return;
 			}
 			explosion.update();
 		});
-
+		// 控制随机生成坠星
 		spawnTimer--;
 		if (spawnTimer < 0) {
-			spawnTimer = ~~(Math.random() * 500);
+			spawnTimer = Math.random() * 300;
 			starsArray.push(new Star());
 		}
 	}
